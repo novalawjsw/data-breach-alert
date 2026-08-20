@@ -55,7 +55,7 @@ def check_news():
     if not all([TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID]):
         print("Telegram API Key is missing.")
         return
-send_telegram_alert("🤖 텔레그램 연결 테스트입니다!", "https://google.com")
+    send_telegram_alert("🤖 텔레그램 연결 테스트입니다!", "https://google.com")
 
     query = urllib.parse.quote("개인정보 유출")
     url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
