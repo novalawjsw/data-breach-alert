@@ -22,15 +22,28 @@ def save_db(db):
 
 def parse_victim_count(text):
     clean_text = text.replace("<b>", "").replace("</b>", "").replace("&quot;", '"')
+    
     match_eok = re.findall(r'([\d,.]+)\s*억', clean_text)
     for num_str in match_eok:
-        if int(float(num_str.replace(',', '')) * 100_000_000) >= 5_000_000: return True
+        try:
+            if int(float(num_str.replace(',', '')) * 100_000_000) >= 5_000_000: return True
+        except ValueError:
+            continue
+            
     match_man = re.findall(r'([\d,.]+)\s*만', clean_text)
     for num_str in match_man:
-        if int(float(num_str.replace(',', '')) * 10_000) >= 5_000_000: return True
+        try:
+            if int(float(num_str.replace(',', '')) * 10_000) >= 5_000_000: return True
+        except ValueError:
+            continue
+            
     match_raw = re.findall(r'([\d,]+)\s*(?:명|건|개|계정)', clean_text)
     for num_str in match_raw:
-        if int(num_str.replace(',', '')) >= 5_000_000: return True
+        try:
+            if int(num_str.replace(',', '')) >= 5_000_000: return True
+        except ValueError:
+            continue
+            
     return False
 
 def send_telegram_alert(title, link):
