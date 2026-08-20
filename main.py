@@ -26,21 +26,21 @@ def parse_victim_count(text):
     match_eok = re.findall(r'([\d,.]+)\s*억', clean_text)
     for num_str in match_eok:
         try:
-            if int(float(num_str.replace(',', '')) * 100_000_000) >= 5_000_000: return True
+            if int(float(num_str.replace(',', '')) * 100_000_000) >= 1: return True
         except ValueError:
             continue
             
     match_man = re.findall(r'([\d,.]+)\s*만', clean_text)
     for num_str in match_man:
         try:
-            if int(float(num_str.replace(',', '')) * 10_000) >= 5_000_000: return True
+            if int(float(num_str.replace(',', '')) * 10_000) >= 1: return True
         except ValueError:
             continue
             
     match_raw = re.findall(r'([\d,]+)\s*(?:명|건|개|계정)', clean_text)
     for num_str in match_raw:
         try:
-            if int(num_str.replace(',', '')) >= 5_000_000: return True
+            if int(num_str.replace(',', '')) >= 1: return True
         except ValueError:
             continue
             
