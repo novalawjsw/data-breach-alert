@@ -67,8 +67,8 @@ def parse_victim_count(text):
     return False
 
 def is_relevant_nova_news(title):
-    """자사 뉴스 중 집단소송이나 정보유출 등 관련 건인지 확인하는 필터 (키워드 확장)"""
-    keywords = ["유출", "집단소송", "단체소송", "소송", "배상", "보상", "손해배상"]
+    """자사 뉴스 중 집단소송이나 정보유출 등 관련 건인지 확인하는 필터 (검색망 확대)"""
+    keywords = ["유출", "집단소송", "단체소송", "소송", "배상", "보상", "손해배상", "해킹", "피해", "위자료", "고소", "고발", "대응"]
     for keyword in keywords:
         if keyword in title:
             return True
@@ -76,9 +76,9 @@ def is_relevant_nova_news(title):
 
 def send_telegram_alert(alert_type, title, link):
     if alert_type == "breach":
-        message = f"🚨 [대규모 개인정보 유출 감지]\n\n📌 피해 규모: 500만 건/명 이상\n📰 제목: {title}\n🔗 링크: {link}"
+        message = f"🚨 [대규모 정보 유출 감지]\n\n📌 피해 규모: 500만 건/명 이상\n📰 제목: {title}\n🔗 링크: {link}"
     elif alert_type == "nova":
-        message = f"🏢 [Law Firm Nova 모니터링]\n\n📌 관련 키워드 보도 감지\n📰 제목: {title}\n🔗 링크: {link}"
+        message = f"🏢 [Law Firm Nova 모니터링]\n\n📌 관련 업무 보도 감지\n📰 제목: {title}\n🔗 링크: {link}"
     else:
         return
         
@@ -100,17 +100,17 @@ def process_rss(query, alert_type, seen_links):
         link = item.find('link').text
         pub_date_str = item.find('pubDate').text
         
-        # 1단계: 이미 보낸 기사인지 확인
+        # 1. 중복 알림 방지
         if link in seen_links: 
             continue
             
-        # 2단계: 최신 기사(24시간 이내)인지 확인하여 옛날 기사 원천 차단
+        # 2. 옛날 기사 차단 (24시간 이내의 최신 기사만 허용)
         if pub_date_str:
             pub_date = parsedate_to_datetime(pub_date_str)
             if (now - pub_date).total_seconds() > 24 * 3600:
                 continue 
         
-        # 3단계: 조건 부합 시 알림 발송
+        # 3. 알림 발송 조건 확인
         if alert_type == "breach":
             if parse_victim_count(title):
                 send_telegram_alert("breach", title, link)
@@ -129,12 +129,12 @@ def check_news():
 
     seen_links = load_db()
     
-    # 1. 일반 대규모 개인정보 유출 뉴스 (500만 명 필터)
-    query_breach = urllib.parse.quote("개인정보 유출")
+    # 1. 대규모 정보 유출 뉴스 (OR 연산자로 다양한 유출 키워드 동시 검색)
+    query_breach = urllib.parse.quote('"개인정보 유출" OR "고객정보 유출" OR "회원정보 유출" OR "데이터 유출" OR "정보 유출"')
     seen_links = process_rss(query_breach, "breach", seen_links)
     
-    # 2. 자사 관련 집단소송/유출 뉴스 
-    query_nova = urllib.parse.quote('"법무법인 노바" OR "이돈호 변호사"')
+    # 2. 자사 관련 집단소송/유출 뉴스 (대표변호사, 대표 등 직함 변형 포함)
+    query_nova = urllib.parse.quote('"법무법인 노바" OR "이돈호 변호사" OR "이돈호 대표변호사" OR "이돈호 대표"')
     seen_links = process_rss(query_nova, "nova", seen_links)
     
     save_db(seen_links[-1000:])
