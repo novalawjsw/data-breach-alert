@@ -4,6 +4,8 @@ import json
 import requests
 import urllib.parse
 import xml.etree.ElementTree as ET
+import datetime
+from email.utils import parsedate_to_datetime
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -65,8 +67,8 @@ def parse_victim_count(text):
     return False
 
 def is_relevant_nova_news(title):
-    """자사 뉴스 중 집단소송이나 정보유출 관련 건인지 확인하는 필터"""
-    keywords = ["유출", "집단소송", "단체소송", "소송"]
+    """자사 뉴스 중 집단소송이나 정보유출 등 관련 건인지 확인하는 필터 (키워드 확장)"""
+    keywords = ["유출", "집단소송", "단체소송", "소송", "배상", "보상", "손해배상"]
     for keyword in keywords:
         if keyword in title:
             return True
@@ -74,9 +76,9 @@ def is_relevant_nova_news(title):
 
 def send_telegram_alert(alert_type, title, link):
     if alert_type == "breach":
-        message = f"🚨 [대규모 개인정보 유출 알림]\n\n📌 피해 규모: 500만 건/명 이상 추정\n📰 제목: {title}\n🔗 링크: {link}"
+        message = f"🚨 [대규모 개인정보 유출 감지]\n\n📌 피해 규모: 500만 건/명 이상\n📰 제목: {title}\n🔗 링크: {link}"
     elif alert_type == "nova":
-        message = f"🏢 [법무법인 노바 뉴스 알림]\n\n📌 집단소송/정보유출 보도 감지\n📰 제목: {title}\n🔗 링크: {link}"
+        message = f"🏢 [Law Firm Nova 모니터링]\n\n📌 관련 키워드 보도 감지\n📰 제목: {title}\n🔗 링크: {link}"
     else:
         return
         
@@ -91,18 +93,28 @@ def process_rss(query, alert_type, seen_links):
         return seen_links
         
     root = ET.fromstring(response.text)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    
     for item in root.findall('.//channel/item'):
         title = item.find('title').text
         link = item.find('link').text
+        pub_date_str = item.find('pubDate').text
         
+        # 1단계: 이미 보낸 기사인지 확인
         if link in seen_links: 
             continue
+            
+        # 2단계: 최신 기사(24시간 이내)인지 확인하여 옛날 기사 원천 차단
+        if pub_date_str:
+            pub_date = parsedate_to_datetime(pub_date_str)
+            if (now - pub_date).total_seconds() > 24 * 3600:
+                continue 
         
+        # 3단계: 조건 부합 시 알림 발송
         if alert_type == "breach":
             if parse_victim_count(title):
                 send_telegram_alert("breach", title, link)
         elif alert_type == "nova":
-            # 이중 필터: 자사 관련 뉴스 중 '유출'이나 '소송' 키워드가 들어간 기사만 발송
             if is_relevant_nova_news(title):
                 send_telegram_alert("nova", title, link)
         
